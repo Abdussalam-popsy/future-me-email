@@ -1,0 +1,4 @@
+node_modules/
+.env
+scheduledEmails.json
+.DS_Store
