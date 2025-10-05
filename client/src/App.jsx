@@ -22,7 +22,7 @@ function App() {
     console.log('Form data being sent:', form);
 
     try {
-      const res = await fetch('/schedule-email', {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/schedule-email`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(form),
