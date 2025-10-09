@@ -1,0 +1,19 @@
+name = "futureme-worker"
+main = "src/worker.js"
+compatibility_date = "2024-10-01"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "futureme-db"
+database_id = "08ea6574-a0e1-4f64-806e-5999d70392b3"
+
+[[durable_objects.bindings]]
+name = "EMAIL_SCHEDULER"
+class_name = "EmailScheduler"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["EmailScheduler"]
+
+[vars]
+SENDGRID_FROM_EMAIL = "contact@abdussalampopoola.com"
