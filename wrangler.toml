@@ -16,4 +16,4 @@ tag = "v1"
 new_sqlite_classes = ["EmailScheduler"]
 
 [vars]
-SENDGRID_FROM_EMAIL = "contact@abdussalampopoola.com"
+SENDGRID_FROM_EMAIL = "noreply@futureme.dev"

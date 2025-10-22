@@ -49,7 +49,10 @@ export class EmailScheduler {
         },
         body: JSON.stringify({
           personalizations: [{ to: [{ email: email.recipient }] }],
-          from: { email: this.env.SENDGRID_FROM_EMAIL },
+          from: { 
+            email: 'noreply@futureme.dev',
+            name: 'FutureMe'
+          },
           subject: email.subject,
           content: [{ type: 'text/plain', value: email.message }],
         }),
