@@ -9,6 +9,8 @@ export default {
       fontFamily: {
         'inter-tight': ['"Inter Tight"', 'sans-serif'],
         'fasthand': ['"Fasthand"', 'cursive'],
+        'pacifico': ['Pacifico', 'cursive'],
+        'tangerine': ['Tangerine', 'cursive'],
       },
       colors: {
         'primary': '#0B1431',
