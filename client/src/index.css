@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600&family=Fasthand&family=Pacifico&family=Tangerine:wght@400;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600&family=Fasthand&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -47,58 +47,6 @@
       animation-duration: 0.01ms !important;
       animation-iteration-count: 1 !important;
       transition-duration: 0.01ms !important;
-    }
-  }
-}
-
-/* Timeline Animation Styles */
-@layer components {
-  .timeline-container {
-    @apply fixed inset-0 bg-bg-light/95 flex items-center justify-center z-50 opacity-0 pointer-events-none transition-opacity duration-200;
-  }
-
-  .timeline-container.active {
-    @apply opacity-100 pointer-events-auto;
-  }
-
-  .timeline {
-    @apply relative w-[400px] max-w-[90%];
-  }
-
-  .timeline-track {
-    @apply h-1 bg-blue-200 rounded-full overflow-hidden;
-  }
-
-  .timeline-progress {
-    @apply h-full bg-gradient-to-r from-primary-blue to-blue-400 w-0;
-    animation: progress 800ms cubic-bezier(0.19, 1, 0.22, 1) forwards;
-  }
-
-  @keyframes progress {
-    to {
-      width: 100%;
-    }
-  }
-
-  .timeline-icon {
-    @apply absolute -top-5 left-0 w-12 h-12 bg-primary-blue rounded-full flex items-center justify-center text-white text-2xl shadow-lg shadow-primary-blue/30;
-    animation: moveIcon 800ms cubic-bezier(0.19, 1, 0.22, 1) forwards;
-  }
-
-  @keyframes moveIcon {
-    to {
-      left: calc(100% - 48px);
-    }
-  }
-
-  .success-message {
-    @apply absolute top-20 text-lg font-medium text-primary opacity-0;
-    animation: fadeInSuccess 300ms cubic-bezier(0.25, 0.46, 0.45, 0.94) 600ms forwards;
-  }
-
-  @keyframes fadeInSuccess {
-    to {
-      opacity: 1;
     }
   }
 }

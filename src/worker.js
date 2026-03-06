@@ -116,6 +116,9 @@ export default {
           case 'minutes':
             sendAt.setMinutes(sendAt.getMinutes() + parseInt(timeValue));
             break;
+          case 'hours':
+            sendAt.setHours(sendAt.getHours() + parseInt(timeValue));
+            break;
           case 'days':
             sendAt.setDate(sendAt.getDate() + parseInt(timeValue));
             break;
@@ -152,9 +155,9 @@ export default {
         });
 
       } catch (error) {
-        return new Response('Error: ' + error.message, { 
+        return new Response('Something went wrong. Please try again.', {
           status: 500,
-          headers: corsHeaders 
+          headers: corsHeaders
         });
       }
     }

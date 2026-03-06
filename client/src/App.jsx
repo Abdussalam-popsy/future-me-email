@@ -60,19 +60,6 @@ function App() {
 
     const { value, unit } = parseTimeText(form.timeText);
 
-     // ADD THIS DEBUGGING CODE:
-    console.log('=== EMAIL SCHEDULE DEBUG ===');
-    console.log('User typed:', form.timeText);
-    console.log('Parsed value:', value);
-    console.log('Parsed unit:', unit);
-    console.log('Full payload:', {
-    to: form.to,
-    subject: form.subject,
-    timeValue: value.toString(),
-    timeUnit: unit,
-  });
-  console.log('========================');
-
     // Add minimum delay so user can see "Sending..." state
     const minimumDelay = new Promise(resolve => setTimeout(resolve, 1000));
 
@@ -91,8 +78,6 @@ function App() {
         }),
         minimumDelay // Wait at least 1 second
       ]);
-
-      console.log('Response status:', res.status);
 
       if (res.ok) {
         setButtonState('success');
@@ -211,7 +196,7 @@ useEffect(() => {
             <div className="mb-6">
               <textarea
                 name="message"
-                placeholder="Dear Future Me,&#10;&#10;I hope you still locked in and doing what it takes to stay disciplined at attain success in your field."
+                placeholder="Dear Future Me,&#10;&#10;I hope you still locked in and doing what it takes to stay disciplined to attain success in your field."
                 value={form.message}
                 onChange={handleChange}
                 required
