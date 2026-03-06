@@ -28,17 +28,26 @@
     -webkit-text-fill-color: inherit !important;
   }
 
-  /* Ensure ONLY form inputs stay transparent (not the time badge) */
+  /* Ensure ONLY form inputs stay transparent (not the time selector) */
   input[type="email"],
-  input[type="text"]:not([name="timeText"]),
+  input[type="text"],
   textarea {
     background-color: transparent !important;
   }
 
   input[type="email"]:focus,
-  input[type="text"]:not([name="timeText"]):focus,
+  input[type="text"]:focus,
   textarea:focus {
     background-color: transparent !important;
+  }
+
+  /* Keep time selector inputs styled with their background */
+  input[type="number"] {
+    background-color: revert !important;
+  }
+
+  input[type="number"]:focus {
+    background-color: revert !important;
   }
 
   /* Accessibility: Respect user's motion preferences */

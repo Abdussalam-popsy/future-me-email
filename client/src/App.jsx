@@ -1,6 +1,8 @@
 import { useState, useRef, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Spinner } from './Spinner';
+import TimeSelector from './components/TimeSelector';
+import LetterForm from './components/LetterForm';
+import SubmitButton from './components/SubmitButton';
+import ConfirmationScreen from './components/ConfirmationScreen';
 
 function App() {
   const getCurrentDate = () => {
@@ -14,41 +16,43 @@ function App() {
     subject: '',
     message: '',
     signature: 'Keep Pushing,\nPast You',
-    timeText: '1 year',
+    timeValue: 1,
+    timeUnit: 'years',
   });
-    const [buttonState, setButtonState] = useState('idle');
-    // States: 'idle' | 'sending' | 'success' | 'error'
+  const [buttonState, setButtonState] = useState('idle');
+  // States: 'idle' | 'sending' | 'success' | 'error'
+  const [turnstileToken, setTurnstileToken] = useState(null);
+  const [deliveryDate, setDeliveryDate] = useState(null);
+  const [showConfirmation, setShowConfirmation] = useState(false);
 
-    const buttonCopy = {
-      idle: <span>Send to the future</span>,
-      sending: (
-    <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <Spinner size={24} color="rgba(255, 255, 255, 0.8)"/>
-    </span>
-  ),
-      success: <span>Sent!</span>,
-      error: <span>Failed to send</span>,
-    };
-  const timeInputRef = useRef(null);
+  const turnstileRef = useRef(null);
+  const turnstileWidgetId = useRef(null);
 
-  const parseTimeText = (text) => {
-    const match = text.match(/(\d+)\s*(minute|min|hour|hr|day|week|month|year)s?/i);
-    if (!match) return { value: 1, unit: 'years' };
-    
-    const value = parseInt(match[1]);
-    const unit = match[2].toLowerCase();
-    
-    const unitMap = {
-      'minute': 'minutes', 'min': 'minutes',
-      'hour': 'hours', 'hr': 'hours',
-      'day': 'days',
-      'week': 'weeks',
-      'month': 'months',
-      'year': 'years'
+  useEffect(() => {
+    const renderWidget = () => {
+      if (window.turnstile && turnstileRef.current && turnstileWidgetId.current === null) {
+        turnstileWidgetId.current = window.turnstile.render(turnstileRef.current, {
+          sitekey: import.meta.env.VITE_TURNSTILE_SITE_KEY,
+          callback: (token) => setTurnstileToken(token),
+          'expired-callback': () => setTurnstileToken(null),
+        });
+      }
     };
-    
-    return { value, unit: unitMap[unit] || 'years' };
-  };
+
+    // If turnstile is already loaded, render immediately
+    if (window.turnstile) {
+      renderWidget();
+    } else {
+      // Otherwise wait for it to load
+      const interval = setInterval(() => {
+        if (window.turnstile) {
+          renderWidget();
+          clearInterval(interval);
+        }
+      }, 100);
+      return () => clearInterval(interval);
+    }
+  }, []);
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -57,8 +61,6 @@ function App() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setButtonState('sending');
-
-    const { value, unit } = parseTimeText(form.timeText);
 
     // Add minimum delay so user can see "Sending..." state
     const minimumDelay = new Promise(resolve => setTimeout(resolve, 1000));
@@ -72,8 +74,9 @@ function App() {
             to: form.to,
             subject: form.subject,
             message: `${form.message}\n\n${form.signature}`,
-            timeValue: value.toString(),
-            timeUnit: unit,
+            timeValue: form.timeValue.toString(),
+            timeUnit: form.timeUnit,
+            cf_turnstile_response: turnstileToken,
           }),
         }),
         minimumDelay // Wait at least 1 second
@@ -81,23 +84,34 @@ function App() {
 
       if (res.ok) {
         setButtonState('success');
-        
-        // Reset form immediately
-        setForm({
-          to: '',
-          subject: '',
-          message: '',
-          signature: 'Keep Pushing,\nPast You',
-          timeText: '1 year',
-        });
 
-        // Show "Sent!" for 2 seconds, then reset button
+        // Calculate delivery date
+        const delivery = new Date();
+        const tv = parseInt(form.timeValue);
+        switch (form.timeUnit) {
+          case 'minutes': delivery.setMinutes(delivery.getMinutes() + tv); break;
+          case 'hours': delivery.setHours(delivery.getHours() + tv); break;
+          case 'days': delivery.setDate(delivery.getDate() + tv); break;
+          case 'weeks': delivery.setDate(delivery.getDate() + tv * 7); break;
+          case 'months': delivery.setMonth(delivery.getMonth() + tv); break;
+          case 'years': delivery.setFullYear(delivery.getFullYear() + tv); break;
+        }
+        setDeliveryDate(delivery);
+
+        // Show "Sent!" briefly, then transition to confirmation screen
         setTimeout(() => {
-          setButtonState('idle');
-        }, 2000);
+          setShowConfirmation(true);
+        }, 1500);
       } else {
         console.error('Failed to send:', res.statusText);
         setButtonState('error');
+
+        // Reset Turnstile
+        setTurnstileToken(null);
+        if (turnstileWidgetId.current !== null) {
+          window.turnstile.reset(turnstileWidgetId.current);
+        }
+
         setTimeout(() => {
           setButtonState('idle');
         }, 3000);
@@ -105,40 +119,37 @@ function App() {
     } catch (err) {
       console.error('Error sending email:', err);
       setButtonState('error');
+
+      // Reset Turnstile
+      setTurnstileToken(null);
+      if (turnstileWidgetId.current !== null) {
+        window.turnstile.reset(turnstileWidgetId.current);
+      }
+
       setTimeout(() => {
         setButtonState('idle');
       }, 3000);
     }
   };
 
-
-  const adjustTimeInputWidth = () => {
-  if (timeInputRef.current) {
-    // Create a temporary span to measure text width
-    const span = document.createElement('span');
-    span.style.font = window.getComputedStyle(timeInputRef.current).font;
-    span.style.fontSize = window.getComputedStyle(timeInputRef.current).fontSize;
-    span.style.visibility = 'hidden';
-    span.style.position = 'absolute';
-    span.textContent = timeInputRef.current.value || timeInputRef.current.placeholder;
-    
-    document.body.appendChild(span);
-    const textWidth = span.offsetWidth;
-    document.body.removeChild(span);
-    
-    // Add padding (32px for px-4 on both sides) + small buffer
-    const totalWidth = textWidth + 32 + 8;
-    
-    // Set min (70px) and max (150px)
-    const finalWidth = Math.min(Math.max(totalWidth, 70), 150);
-    
-    timeInputRef.current.style.width = `${finalWidth}px`;
-  }
-};
-
-useEffect(() => {
-  adjustTimeInputWidth();
-}, [form.timeText]);
+  const handleWriteAnother = () => {
+    setShowConfirmation(false);
+    setDeliveryDate(null);
+    setButtonState('idle');
+    setForm({
+      to: '',
+      subject: '',
+      message: '',
+      signature: 'Keep Pushing,\nPast You',
+      timeValue: 1,
+      timeUnit: 'years',
+    });
+    // Reset Turnstile
+    setTurnstileToken(null);
+    if (turnstileWidgetId.current !== null) {
+      window.turnstile.reset(turnstileWidgetId.current);
+    }
+  };
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-bg-light px-4 py-8">
@@ -147,123 +158,70 @@ useEffect(() => {
           Write a letter to your future-self
         </h1>
 
-        <form onSubmit={handleSubmit}>
-          <div className="bg-white rounded-2xl md:rounded-3xl p-6 md:p-10 shadow-sm mx-4 md:mx-0">
-            <div className="flex flex-col gap-6 md:flex-row-reverse md:items-center md:justify-between mb-6">
-              {/* Time badge - Top Right */}
-              <div className="flex items-center gap-1 justify-end">
-                <input
-                  ref={timeInputRef}
-                  type="text"
-                  name="timeText"
-                  placeholder="1 year"
-                  value={form.timeText}
-                  onChange={handleChange}
-                  className="px-4 py-2 bg-blue-100 text-blue-700 rounded-full text-sm font-medium border-none outline-none text-center"
+        {showConfirmation ? (
+          <ConfirmationScreen deliveryDate={deliveryDate} onWriteAnother={handleWriteAnother} />
+        ) : (
+          <form onSubmit={handleSubmit}>
+            <div className="bg-white rounded-2xl md:rounded-3xl p-6 md:p-10 shadow-sm mx-4 md:mx-0">
+              <div className="flex flex-col gap-6 md:flex-row-reverse md:items-center md:justify-between mb-6">
+                {/* Time badge - Top Right */}
+                <TimeSelector
+                  timeValue={form.timeValue}
+                  timeUnit={form.timeUnit}
+                  onTimeValueChange={(val) => setForm({ ...form, timeValue: val })}
+                  onTimeUnitChange={(val) => setForm({ ...form, timeUnit: val })}
                 />
-                <span className="text-sm text-blue-700 font-medium">from now</span>
+
+                {/* To Field */}
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-gray-500 flex-shrink-0">To:</span>
+                  <input
+                    type="email"
+                    name="to"
+                    placeholder="meinthefuture@gmail.com"
+                    value={form.to}
+                    onChange={handleChange}
+                    required
+                    className="flex-1 py-1 text-sm border-none text-primary outline-none bg-transparent placeholder:text-gray-400"
+                  />
+                </div>
               </div>
 
-              {/* To Field */}
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-gray-500 flex-shrink-0">To:</span>
-                <input
-                  type="email"
-                  name="to"
-                  placeholder="meinthefuture@gmail.com"
-                  value={form.to}
-                  onChange={handleChange}
-                  required
-                  className="flex-1 py-1 text-sm border-none text-primary outline-none bg-transparent placeholder:text-gray-400"
-                />
-              </div>
-            </div>
-
-            {/* Subject */}
-            <div className="mb-6">
-              <input
-                type="text"
-                name="subject"
-                placeholder={`A letter from ${getCurrentDate()}`}
-                value={form.subject}
-                onChange={handleChange}
-                required
-                className="w-full py-2 text-2xl md:text-3xl font-semibold border-none text-primary outline-none bg-transparent placeholder:text-gray-300"
+              <LetterForm
+                form={form}
+                onFormChange={(name, value) => setForm({ ...form, [name]: value })}
+                getCurrentDate={getCurrentDate}
               />
-            </div>
 
-            {/* Message */}
-            <div className="mb-6">
-              <textarea
-                name="message"
-                placeholder="Dear Future Me,&#10;&#10;I hope you still locked in and doing what it takes to stay disciplined to attain success in your field."
-                value={form.message}
-                onChange={handleChange}
-                required
-                rows="8"
-                className="w-full py-3 text-base leading-relaxed border-none text-gray-600 outline-none resize-vertical bg-transparent placeholder:text-gray-400"
-              />
-            </div>
+              {/* Signature and button wrapper */}
+              <div className="flex flex-col md:flex-row md:items-end md:justify-between md:gap-6">
+                {/* Signature */}
+                <div className="mb-6 md:mb-0 md:flex-1">
+                  <textarea
+                    name="signature"
+                    value={form.signature}
+                    onChange={handleChange}
+                    rows="2"
+                    className="w-full py-2 text-lg tracking-widest leading-relaxed border-none text-gray-500 outline-none resize-none bg-transparent font-fasthand"
+                  />
+                </div>
 
+                {/* Turnstile widget */}
+                <div ref={turnstileRef} className="mb-4 md:mb-0"></div>
 
-            {/* Signature and button wrapper */}
-            <div className="flex flex-col md:flex-row md:items-end md:justify-between md:gap-6">
-              {/* Signature */}
-              <div className="mb-6 md:mb-0 md:flex-1">
-                <textarea
-                  name="signature"
-                  value={form.signature}
-                  onChange={handleChange}
-                  rows="2"
-                  className="w-full py-2 text-lg tracking-widest leading-relaxed border-none text-gray-500 outline-none resize-none bg-transparent font-fasthand"
-                />
+                {/* Submit button */}
+                <SubmitButton buttonState={buttonState} disabled={buttonState !== 'idle' || !turnstileToken} />
               </div>
-
-              {/* Submit button - Full Width */}
-              <motion.button
-                type="submit"
-                disabled={buttonState !== 'idle'}
-                whileHover={buttonState === 'idle' ? { scale: 1.02 } : {}}
-                whileTap={buttonState === 'idle' ? { scale: 0.98 } : {}}
-                className={`flex items-center justify-center w-full md:w-auto md:min-w-[240px] -mx-0 -mt-0 -mb-0 md:mx-0 md:mb-0 md:flex-shrink-0 py-4 text-base font-medium border-none rounded-full text-white transition-all duration-200 ${
-                  buttonState === 'error'
-                  ? 'bg-red-500 cursor-not-allowed'
-                    : buttonState === 'sending'
-                    ? 'bg-blue-400 cursor-not-allowed'
-                    : buttonState === 'success'
-                    ? 'bg-green-500 cursor-not-allowed'
-                    : 'bg-primary-blue hover:bg-blue-600 cursor-pointer'
-                }`}
-              >
-                <AnimatePresence mode="popLayout" initial={false}>
-                  <motion.span 
-                    key={buttonState}
-                    transition={{ type: 'spring', bounce: 0, duration: 0.3 }}
-                    initial={{ y: -25, opacity: 0 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: 25 }}
-                    style={{ 
-                      display: 'flex', 
-                      alignItems: 'center', 
-                      justifyContent: 'center', 
-                      width: '100%',
-                      height: '100%'
-                    }}
-                  >
-                    {buttonCopy[buttonState]}
-                  </motion.span>
-                </AnimatePresence>
-              </motion.button>
             </div>
-          </div>
-        </form>
+          </form>
+        )}
 
         {/* Footer */}
         <div className="mt-8 text-center text-sm text-gray-500">
           <p className="mb-2">
-            Made with 💙 by{' '}
-            <a 
-              href="https://twitter.com/abdussalampopsy" 
+            Made with &#128153; by{' '}
+            <a
+              href="https://twitter.com/abdussalampopsy"
               target="_blank"
               rel="noopener noreferrer"
               className="text-primary no-underline font-medium hover:text-primary-blue transition-colors"
@@ -271,13 +229,13 @@ useEffect(() => {
               Abdussalam
             </a>
           </p>
-          <a 
-            href="https://buymeacoffee.com/abdussalampopsy" 
+          <a
+            href="https://buymeacoffee.com/abdussalampopsy"
             target="_blank"
             rel="noopener noreferrer"
             className="text-gray-500 no-underline hover:text-primary transition-colors"
           >
-            Support this project ☕
+            Support this project &#9749;
           </a>
         </div>
       </div>

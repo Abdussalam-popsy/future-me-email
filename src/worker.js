@@ -1,3 +1,13 @@
+// =============================================================
+// Cloudflare Turnstile Configuration
+// Get your keys from: Cloudflare Dashboard → Turnstile → Add Site
+// TURNSTILE_SECRET_KEY: Add as a secret in wrangler.toml or via
+//   `wrangler secret put TURNSTILE_SECRET_KEY`
+// VITE_TURNSTILE_SITE_KEY: Add to client/.env as VITE_TURNSTILE_SITE_KEY
+// =============================================================
+
+import { generateEmailHTML } from './emailTemplate.js';
+
 // Durable Object for scheduling emails with alarms
 export class EmailScheduler {
   constructor(state, env) {
@@ -39,6 +49,17 @@ export class EmailScheduler {
 
     const email = results[0];
 
+    // Format dates for the email template
+    const sentDate = new Date(email.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+    const deliveryDate = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+
+    // Generate the HTML version of the email
+    const htmlContent = generateEmailHTML({
+      message: email.message,
+      sentDate,
+      deliveryDate,
+    });
+
     // Send the email
     try {
       const response = await fetch('https://api.sendgrid.com/v3/mail/send', {
@@ -49,12 +70,15 @@ export class EmailScheduler {
         },
         body: JSON.stringify({
           personalizations: [{ to: [{ email: email.recipient }] }],
-          from: { 
+          from: {
             email: 'noreply@futureme.dev',
             name: 'FutureMe'
           },
           subject: email.subject,
-          content: [{ type: 'text/plain', value: email.message }],
+          content: [
+            { type: 'text/plain', value: email.message },
+            { type: 'text/html', value: htmlContent },
+          ],
         }),
       });
 
@@ -72,6 +96,60 @@ export class EmailScheduler {
       console.error(`Error sending email: ${error.message}`);
     }
   }
+}
+
+// Input validation helper
+function validateEmailInput({ to, subject, message, timeValue, timeUnit }) {
+  const errors = [];
+
+  // Email validation
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!to || typeof to !== 'string') {
+    errors.push('Recipient email is required.');
+  } else if (to.length > 254) {
+    errors.push('Email address is too long (max 254 characters).');
+  } else if (!emailRegex.test(to)) {
+    errors.push('Invalid email address format.');
+  }
+
+  // Subject validation
+  if (!subject || typeof subject !== 'string') {
+    errors.push('Subject is required.');
+  } else if (subject.length > 200) {
+    errors.push('Subject is too long (max 200 characters).');
+  }
+
+  // Message validation
+  if (!message || typeof message !== 'string') {
+    errors.push('Message is required.');
+  } else if (message.length < 10) {
+    errors.push('Message is too short (min 10 characters).');
+  } else if (message.length > 10000) {
+    errors.push('Message is too long (max 10,000 characters).');
+  }
+
+  // Time value validation
+  const parsedTimeValue = parseInt(timeValue);
+  if (!timeValue || isNaN(parsedTimeValue)) {
+    errors.push('Time value is required and must be a number.');
+  } else if (parsedTimeValue < 1 || parsedTimeValue > 100) {
+    errors.push('Time value must be between 1 and 100.');
+  }
+
+  // Time unit validation
+  const validUnits = ['minutes', 'hours', 'days', 'weeks', 'months', 'years'];
+  if (!timeUnit || !validUnits.includes(timeUnit)) {
+    errors.push('Time unit must be one of: minutes, hours, days, weeks, months, years.');
+  }
+
+  return errors;
+}
+
+// Input sanitization helper
+function sanitizeInput(str) {
+  if (typeof str !== 'string') return str;
+  return str.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+            .replace(/<[^>]*>/g, '');
 }
 
 // Main Worker
@@ -99,12 +177,75 @@ export default {
     // Schedule email route
     if (url.pathname === '/schedule-email' && request.method === 'POST') {
       try {
-        const { to, subject, message, timeValue, timeUnit } = await request.json();
+        // Rate limiting - 5 requests per IP per hour
+        const clientIP = request.headers.get('CF-Connecting-IP') || 'unknown';
+        const nowEpoch = Math.floor(Date.now() / 1000);
+        const oneHourAgo = nowEpoch - 3600;
 
-        if (!to || !subject || !message || !timeValue || !timeUnit) {
-          return new Response('All fields are required', { 
+        // Clean up stale entries
+        await env.DB.prepare('DELETE FROM rate_limits WHERE window_start < ?').bind(oneHourAgo).run();
+
+        // Check current rate
+        const rateRow = await env.DB.prepare('SELECT request_count, window_start FROM rate_limits WHERE ip = ?').bind(clientIP).first();
+
+        if (rateRow) {
+          if (rateRow.window_start > oneHourAgo && rateRow.request_count >= 5) {
+            return new Response(JSON.stringify({ error: 'Too many requests. Please try again later.' }), {
+              status: 429,
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            });
+          }
+
+          if (rateRow.window_start <= oneHourAgo) {
+            // Reset window
+            await env.DB.prepare('UPDATE rate_limits SET request_count = 1, window_start = ? WHERE ip = ?').bind(nowEpoch, clientIP).run();
+          } else {
+            // Increment counter
+            await env.DB.prepare('UPDATE rate_limits SET request_count = request_count + 1 WHERE ip = ?').bind(clientIP).run();
+          }
+        } else {
+          // First request from this IP
+          await env.DB.prepare('INSERT INTO rate_limits (ip, request_count, window_start) VALUES (?, 1, ?)').bind(clientIP, nowEpoch).run();
+        }
+
+        // Parse request body
+        const { to, subject, message, timeValue, timeUnit, cf_turnstile_response } = await request.json();
+
+        // Validate input
+        const validationErrors = validateEmailInput({ to, subject, message, timeValue, timeUnit });
+        if (validationErrors.length > 0) {
+          return new Response(JSON.stringify({ error: validationErrors[0] }), {
             status: 400,
-            headers: corsHeaders 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
+        }
+
+        // Sanitize message content
+        const sanitizedMessage = sanitizeInput(message);
+        const sanitizedSubject = sanitizeInput(subject);
+
+        // Verify Turnstile token
+        if (!cf_turnstile_response) {
+          return new Response(JSON.stringify({ error: 'Bot verification failed' }), {
+            status: 403,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
+        }
+
+        const turnstileVerification = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            secret: env.TURNSTILE_SECRET_KEY,
+            response: cf_turnstile_response,
+          }),
+        });
+
+        const turnstileResult = await turnstileVerification.json();
+        if (!turnstileResult.success) {
+          return new Response(JSON.stringify({ error: 'Bot verification failed' }), {
+            status: 403,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
           });
         }
 
@@ -136,7 +277,7 @@ export default {
         // Save to D1 database
         const result = await env.DB.prepare(
           'INSERT INTO scheduled_emails (recipient, subject, message, send_at) VALUES (?, ?, ?, ?)'
-        ).bind(to, subject, message, sendAt.toISOString()).run();
+        ).bind(to, sanitizedSubject, sanitizedMessage, sendAt.toISOString()).run();
 
         const emailId = result.meta.last_row_id;
 
@@ -150,8 +291,8 @@ export default {
           body: JSON.stringify({ emailId, sendAt: sendAt.toISOString() }),
         });
 
-        return new Response('Email scheduled successfully!', { 
-          headers: corsHeaders 
+        return new Response('Email scheduled successfully!', {
+          headers: corsHeaders
         });
 
       } catch (error) {
