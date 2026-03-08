@@ -1,58 +1,33 @@
-import { useState, useRef, useEffect } from 'react';
-import TimeSelector from './components/TimeSelector';
+import { useState, useRef } from 'react';
+import { AnimatePresence } from 'framer-motion';
+import DatePill from './components/DateModal/DatePill';
+import DateModal from './components/DateModal/DateModal';
 import LetterForm from './components/LetterForm';
 import SubmitButton from './components/SubmitButton';
 import ConfirmationScreen from './components/ConfirmationScreen';
+import { useTurnstile } from './hooks/useTurnstile';
 
 function App() {
-  const getCurrentDate = () => {
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    const now = new Date();
-    return `${months[now.getMonth()]} ${now.getDate()} ${now.getFullYear()}`;
-  };
-
   const [form, setForm] = useState({
     to: '',
     subject: '',
     message: '',
     signature: 'Keep Pushing,\nPast You',
-    timeValue: 1,
-    timeUnit: 'years',
   });
   const [buttonState, setButtonState] = useState('idle');
-  // States: 'idle' | 'sending' | 'success' | 'error'
-  const [turnstileToken, setTurnstileToken] = useState(null);
   const [deliveryDate, setDeliveryDate] = useState(null);
   const [showConfirmation, setShowConfirmation] = useState(false);
 
-  const turnstileRef = useRef(null);
-  const turnstileWidgetId = useRef(null);
+  const [sendAt, setSendAt] = useState(() => {
+    const d = new Date();
+    d.setFullYear(d.getFullYear() + 1);
+    d.setHours(0, 0, 0, 0);
+    return d;
+  });
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const pillRef = useRef(null);
 
-  useEffect(() => {
-    const renderWidget = () => {
-      if (window.turnstile && turnstileRef.current && turnstileWidgetId.current === null) {
-        turnstileWidgetId.current = window.turnstile.render(turnstileRef.current, {
-          sitekey: import.meta.env.VITE_TURNSTILE_SITE_KEY,
-          callback: (token) => setTurnstileToken(token),
-          'expired-callback': () => setTurnstileToken(null),
-        });
-      }
-    };
-
-    // If turnstile is already loaded, render immediately
-    if (window.turnstile) {
-      renderWidget();
-    } else {
-      // Otherwise wait for it to load
-      const interval = setInterval(() => {
-        if (window.turnstile) {
-          renderWidget();
-          clearInterval(interval);
-        }
-      }, 100);
-      return () => clearInterval(interval);
-    }
-  }, []);
+  const { execute, reset } = useTurnstile();
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -60,76 +35,55 @@ function App() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setButtonState('sending');
+    setButtonState('verifying');
 
-    // Add minimum delay so user can see "Sending..." state
-    const minimumDelay = new Promise(resolve => setTimeout(resolve, 1000));
+    execute(async (token) => {
+      setButtonState('sending');
 
-    try {
-      const [res] = await Promise.all([
-        fetch(`${import.meta.env.VITE_API_URL}/schedule-email`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            to: form.to,
-            subject: form.subject,
-            message: `${form.message}\n\n${form.signature}`,
-            timeValue: form.timeValue.toString(),
-            timeUnit: form.timeUnit,
-            cf_turnstile_response: turnstileToken,
+      const minimumDelay = new Promise(resolve => setTimeout(resolve, 1000));
+
+      try {
+        const [res] = await Promise.all([
+          fetch(`${import.meta.env.VITE_API_URL}/schedule-email`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              to: form.to,
+              subject: form.subject,
+              message: `${form.message}\n\n${form.signature}`,
+              sendAt: sendAt.toISOString(),
+              cf_turnstile_response: token,
+            }),
           }),
-        }),
-        minimumDelay // Wait at least 1 second
-      ]);
+          minimumDelay
+        ]);
 
-      if (res.ok) {
-        setButtonState('success');
+        if (res.ok) {
+          setButtonState('success');
+          setDeliveryDate(sendAt);
 
-        // Calculate delivery date
-        const delivery = new Date();
-        const tv = parseInt(form.timeValue);
-        switch (form.timeUnit) {
-          case 'minutes': delivery.setMinutes(delivery.getMinutes() + tv); break;
-          case 'hours': delivery.setHours(delivery.getHours() + tv); break;
-          case 'days': delivery.setDate(delivery.getDate() + tv); break;
-          case 'weeks': delivery.setDate(delivery.getDate() + tv * 7); break;
-          case 'months': delivery.setMonth(delivery.getMonth() + tv); break;
-          case 'years': delivery.setFullYear(delivery.getFullYear() + tv); break;
+          setTimeout(() => {
+            setShowConfirmation(true);
+          }, 1500);
+        } else {
+          console.error('Failed to send:', res.statusText);
+          setButtonState('error');
+          reset();
+
+          setTimeout(() => {
+            setButtonState('idle');
+          }, 3000);
         }
-        setDeliveryDate(delivery);
-
-        // Show "Sent!" briefly, then transition to confirmation screen
-        setTimeout(() => {
-          setShowConfirmation(true);
-        }, 1500);
-      } else {
-        console.error('Failed to send:', res.statusText);
+      } catch (err) {
+        console.error('Error sending email:', err);
         setButtonState('error');
-
-        // Reset Turnstile
-        setTurnstileToken(null);
-        if (turnstileWidgetId.current !== null) {
-          window.turnstile.reset(turnstileWidgetId.current);
-        }
+        reset();
 
         setTimeout(() => {
           setButtonState('idle');
         }, 3000);
       }
-    } catch (err) {
-      console.error('Error sending email:', err);
-      setButtonState('error');
-
-      // Reset Turnstile
-      setTurnstileToken(null);
-      if (turnstileWidgetId.current !== null) {
-        window.turnstile.reset(turnstileWidgetId.current);
-      }
-
-      setTimeout(() => {
-        setButtonState('idle');
-      }, 3000);
-    }
+    });
   };
 
   const handleWriteAnother = () => {
@@ -141,14 +95,14 @@ function App() {
       subject: '',
       message: '',
       signature: 'Keep Pushing,\nPast You',
-      timeValue: 1,
-      timeUnit: 'years',
     });
-    // Reset Turnstile
-    setTurnstileToken(null);
-    if (turnstileWidgetId.current !== null) {
-      window.turnstile.reset(turnstileWidgetId.current);
-    }
+    setSendAt(() => {
+      const d = new Date();
+      d.setFullYear(d.getFullYear() + 1);
+      d.setHours(0, 0, 0, 0);
+      return d;
+    });
+    reset();
   };
 
   return (
@@ -164,12 +118,11 @@ function App() {
           <form onSubmit={handleSubmit}>
             <div className="bg-white rounded-2xl md:rounded-3xl p-6 md:p-10 shadow-sm mx-4 md:mx-0">
               <div className="flex flex-col gap-6 md:flex-row-reverse md:items-center md:justify-between mb-6">
-                {/* Time badge - Top Right */}
-                <TimeSelector
-                  timeValue={form.timeValue}
-                  timeUnit={form.timeUnit}
-                  onTimeValueChange={(val) => setForm({ ...form, timeValue: val })}
-                  onTimeUnitChange={(val) => setForm({ ...form, timeUnit: val })}
+                {/* Date pill - Top Right */}
+                <DatePill
+                  ref={pillRef}
+                  sendAt={sendAt}
+                  onClick={() => setIsModalOpen((o) => !o)}
                 />
 
                 {/* To Field */}
@@ -190,7 +143,7 @@ function App() {
               <LetterForm
                 form={form}
                 onFormChange={(name, value) => setForm({ ...form, [name]: value })}
-                getCurrentDate={getCurrentDate}
+                sendAt={sendAt}
               />
 
               {/* Signature and button wrapper */}
@@ -206,15 +159,27 @@ function App() {
                   />
                 </div>
 
-                {/* Turnstile widget */}
-                <div ref={turnstileRef} className="mb-4 md:mb-0"></div>
-
                 {/* Submit button */}
-                <SubmitButton buttonState={buttonState} disabled={buttonState !== 'idle' || !turnstileToken} />
+                <SubmitButton buttonState={buttonState} disabled={buttonState !== 'idle'} />
               </div>
             </div>
           </form>
         )}
+
+        {/* Date Modal */}
+        <AnimatePresence>
+          {isModalOpen && (
+            <DateModal
+              sendAt={sendAt}
+              onSelect={(date) => {
+                setSendAt(date);
+                setIsModalOpen(false);
+              }}
+              onClose={() => setIsModalOpen(false)}
+              anchorRef={pillRef}
+            />
+          )}
+        </AnimatePresence>
 
         {/* Footer */}
         <div className="mt-8 text-center text-sm text-gray-500">

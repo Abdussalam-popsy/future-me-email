@@ -1,4 +1,6 @@
-function LetterForm({ form, onFormChange, getCurrentDate }) {
+import { formatShortDate } from './DateModal/dateUtils';
+
+function LetterForm({ form, onFormChange, sendAt }) {
   const handleChange = (e) => {
     onFormChange(e.target.name, e.target.value);
   };
@@ -10,7 +12,7 @@ function LetterForm({ form, onFormChange, getCurrentDate }) {
         <input
           type="text"
           name="subject"
-          placeholder={`A letter from ${getCurrentDate()}`}
+          placeholder={`A letter from ${formatShortDate(new Date())}`}
           value={form.subject}
           onChange={handleChange}
           required

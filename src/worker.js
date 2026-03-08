@@ -78,23 +78,28 @@ export class EmailScheduler {
       });
 
       if (response.ok) {
-        console.log(`✅ Sent email to ${email.recipient}`);
-        
-        // Delete from database
+        console.log(`Sent email to ${email.recipient}`);
         await this.env.DB.prepare(
-          'DELETE FROM scheduled_emails WHERE id = ?'
-        ).bind(emailId).run();
+          'UPDATE scheduled_emails SET status = ? WHERE id = ?'
+        ).bind('sent', emailId).run();
       } else {
-        console.error(`❌ Failed to send email: ${await response.text()}`);
+        const errorText = await response.text();
+        console.error(`Failed to send email: ${errorText}`);
+        await this.env.DB.prepare(
+          'UPDATE scheduled_emails SET status = ?, failure_reason = ? WHERE id = ?'
+        ).bind('failed', errorText, emailId).run();
       }
     } catch (error) {
       console.error(`Error sending email: ${error.message}`);
+      await this.env.DB.prepare(
+        'UPDATE scheduled_emails SET status = ?, failure_reason = ? WHERE id = ?'
+      ).bind('failed', error.message, emailId).run();
     }
   }
 }
 
 // Input validation helper
-function validateEmailInput({ to, subject, message, timeValue, timeUnit }) {
+function validateEmailInput({ to, subject, message, sendAt }) {
   const errors = [];
 
   // Email validation
@@ -123,18 +128,23 @@ function validateEmailInput({ to, subject, message, timeValue, timeUnit }) {
     errors.push('Message is too long (max 10,000 characters).');
   }
 
-  // Time value validation
-  const parsedTimeValue = parseInt(timeValue);
-  if (!timeValue || isNaN(parsedTimeValue)) {
-    errors.push('Time value is required and must be a number.');
-  } else if (parsedTimeValue < 1 || parsedTimeValue > 100) {
-    errors.push('Time value must be between 1 and 100.');
-  }
-
-  // Time unit validation
-  const validUnits = ['minutes', 'hours', 'days', 'weeks', 'months', 'years'];
-  if (!timeUnit || !validUnits.includes(timeUnit)) {
-    errors.push('Time unit must be one of: minutes, hours, days, weeks, months, years.');
+  // sendAt validation
+  if (!sendAt || typeof sendAt !== 'string') {
+    errors.push('Delivery date is required.');
+  } else {
+    const parsed = new Date(sendAt);
+    if (isNaN(parsed.getTime())) {
+      errors.push('Delivery date is invalid.');
+    } else if (parsed.getTime() <= Date.now()) {
+      errors.push('Delivery date must be in the future.');
+    } else {
+      // Must be within 30 years
+      const maxDate = new Date();
+      maxDate.setFullYear(maxDate.getFullYear() + 30);
+      if (parsed.getTime() > maxDate.getTime()) {
+        errors.push('Delivery date must be within 30 years.');
+      }
+    }
   }
 
   return errors;
@@ -204,10 +214,10 @@ export default {
         }
 
         // Parse request body
-        const { to, subject, message, timeValue, timeUnit, cf_turnstile_response } = await request.json();
+        const { to, subject, message, sendAt, cf_turnstile_response } = await request.json();
 
         // Validate input
-        const validationErrors = validateEmailInput({ to, subject, message, timeValue, timeUnit });
+        const validationErrors = validateEmailInput({ to, subject, message, sendAt });
         if (validationErrors.length > 0) {
           return new Response(JSON.stringify({ error: validationErrors[0] }), {
             status: 400,
@@ -244,35 +254,13 @@ export default {
           });
         }
 
-        // Calculate send time
-        const now = new Date();
-        let sendAt = new Date(now);
-
-        switch(timeUnit) {
-          case 'minutes':
-            sendAt.setMinutes(sendAt.getMinutes() + parseInt(timeValue));
-            break;
-          case 'hours':
-            sendAt.setHours(sendAt.getHours() + parseInt(timeValue));
-            break;
-          case 'days':
-            sendAt.setDate(sendAt.getDate() + parseInt(timeValue));
-            break;
-          case 'weeks':
-            sendAt.setDate(sendAt.getDate() + (parseInt(timeValue) * 7));
-            break;
-          case 'months':
-            sendAt.setMonth(sendAt.getMonth() + parseInt(timeValue));
-            break;
-          case 'years':
-            sendAt.setFullYear(sendAt.getFullYear() + parseInt(timeValue));
-            break;
-        }
+        // Parse the delivery date
+        const parsedSendAt = new Date(sendAt);
 
         // Save to D1 database
         const result = await env.DB.prepare(
           'INSERT INTO scheduled_emails (recipient, subject, message, send_at) VALUES (?, ?, ?, ?)'
-        ).bind(to, sanitizedSubject, sanitizedMessage, sendAt.toISOString()).run();
+        ).bind(to, sanitizedSubject, sanitizedMessage, parsedSendAt.toISOString()).run();
 
         const emailId = result.meta.last_row_id;
 
@@ -283,7 +271,7 @@ export default {
         // Tell the Durable Object to set an alarm
         await stub.fetch('https://fake-host/schedule', {
           method: 'POST',
-          body: JSON.stringify({ emailId, sendAt: sendAt.toISOString() }),
+          body: JSON.stringify({ emailId, sendAt: parsedSendAt.toISOString() }),
         });
 
         return new Response('Email scheduled successfully!', {

@@ -3,6 +3,12 @@ import { Spinner } from '../Spinner';
 
 const buttonCopy = {
   idle: <span>Send to the future</span>,
+  verifying: (
+    <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+      <Spinner size={18} color="rgba(255, 255, 255, 0.8)" />
+      <span>Verifying...</span>
+    </span>
+  ),
   sending: (
     <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <Spinner size={24} color="rgba(255, 255, 255, 0.8)" />
@@ -22,6 +28,8 @@ function SubmitButton({ buttonState, disabled }) {
       className={`flex items-center justify-center w-full md:w-auto md:min-w-[240px] -mx-0 -mt-0 -mb-0 md:mx-0 md:mb-0 md:flex-shrink-0 py-4 text-base font-medium border-none rounded-full text-white transition-all duration-200 ${
         buttonState === 'error'
           ? 'bg-red-500 cursor-not-allowed'
+          : buttonState === 'verifying'
+          ? 'bg-blue-400 cursor-not-allowed'
           : buttonState === 'sending'
           ? 'bg-blue-400 cursor-not-allowed'
           : buttonState === 'success'
