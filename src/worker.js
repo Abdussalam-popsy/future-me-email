@@ -62,23 +62,18 @@ export class EmailScheduler {
 
     // Send the email
     try {
-      const response = await fetch('https://api.sendgrid.com/v3/mail/send', {
+      const response = await fetch('https://api.resend.com/emails', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${this.env.SENDGRID_API_KEY}`,
+          'Authorization': `Bearer ${this.env.RESEND_API_KEY}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          personalizations: [{ to: [{ email: email.recipient }] }],
-          from: {
-            email: 'noreply@futureme.dev',
-            name: 'FutureMe'
-          },
+          from: 'Future Me <noreply@futureme.dev>',
+          to: email.recipient,
           subject: email.subject,
-          content: [
-            { type: 'text/plain', value: email.message },
-            { type: 'text/html', value: htmlContent },
-          ],
+          html: htmlContent,
+          text: email.message,
         }),
       });
 

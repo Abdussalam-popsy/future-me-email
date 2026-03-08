@@ -16,6 +16,6 @@ tag = "v1"
 new_sqlite_classes = ["EmailScheduler"]
 
 [vars]
-SENDGRID_FROM_EMAIL = "noreply@futureme.dev"
+# RESEND_API_KEY should be set via `wrangler secret put RESEND_API_KEY`
 # TURNSTILE_SECRET_KEY should be set via `wrangler secret put TURNSTILE_SECRET_KEY`
-# Do NOT put the actual secret in this file
+# Do NOT put actual secrets in this file
