@@ -155,7 +155,8 @@ function App() {
             transition={{ duration: 0.3 }}
             className="bg-primary-blue text-white text-base font-medium py-2 text-center w-full relative tracking-wide"
           >
-            You&apos;re early &mdash; Future Me just launched. Have feedback? &rarr; feedback@futureme.dev
+            You&apos;re early &mdash; Future Me just launched. Have feedback? &rarr;{' '}
+            <a href="mailto:feedback@futureme.dev?subject=Hi%2C%20I%20have%20feedback%20for%20FutureMe" className="text-white/70 no-underline hover:text-white transition-colors">feedback@futureme.dev</a>
             <button
               onClick={handleDismissBanner}
               className="absolute right-4 top-1/2 -translate-y-1/2 text-white/70 hover:text-white bg-transparent border-none cursor-pointer text-lg leading-none"
@@ -268,7 +269,7 @@ function App() {
                 href="https://twitter.com/abdussalampopsy"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-[#9198B2] underline hover:text-primary transition-colors"
+                className="text-[#9198B2]/70 no-underline hover:text-[#9198B2] transition-colors"
               >
                 Abdussalam
               </a>
@@ -277,7 +278,7 @@ function App() {
               href="https://buymeacoffee.com/abdussalampopsy"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-[#9198B2] underline hover:text-primary transition-colors"
+              className="text-[#9198B2]/70 no-underline hover:text-[#9198B2] transition-colors"
             >
               Support this project &#9749;
             </a>
