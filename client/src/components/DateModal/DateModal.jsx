@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import CalendarTab from './CalendarTab';
 import PresetsTab from './PresetsTab';
@@ -14,6 +14,9 @@ function DateModal({ sendAt, onSelect, onClose, anchorRef }) {
   const [activeTab, setActiveTab] = useState('calendar');
   const [position, setPosition] = useState({ top: 0, left: 0, placement: 'below' });
   const [isMobile, setIsMobile] = useState(false);
+  const tabBarRef = useRef(null);
+  const overlayRef = useRef(null);
+  const tabRefs = useRef({});
 
   // Calculate position from anchor
   const updatePosition = useCallback(() => {
@@ -51,6 +54,35 @@ function DateModal({ sendAt, onSelect, onClose, anchorRef }) {
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [onClose]);
+
+  // Update clip-path on active tab change — use getBoundingClientRect
+  // for accuracy regardless of padding/nesting
+  const updateClipPath = useCallback(() => {
+    const container = overlayRef.current;
+    const activeEl = tabRefs.current[activeTab];
+    if (!container || !activeEl) return;
+
+    const containerRect = container.getBoundingClientRect();
+    const activeRect = activeEl.getBoundingClientRect();
+
+    const clipLeft = activeRect.left - containerRect.left;
+    const clipRight = clipLeft + activeRect.width;
+    const containerWidth = containerRect.width;
+
+    const leftPct = (clipLeft / containerWidth) * 100;
+    const rightPct = 100 - (clipRight / containerWidth) * 100;
+
+    container.style.clipPath = `inset(0 ${rightPct.toFixed(1)}% 0 ${leftPct.toFixed(1)}% round 17px)`;
+  }, [activeTab]);
+
+  useEffect(() => {
+    updateClipPath();
+  }, [updateClipPath]);
+
+  useEffect(() => {
+    window.addEventListener('resize', updateClipPath);
+    return () => window.removeEventListener('resize', updateClipPath);
+  }, [updateClipPath]);
 
   // Check prefers-reduced-motion
   const prefersReducedMotion =
@@ -116,8 +148,8 @@ function DateModal({ sendAt, onSelect, onClose, anchorRef }) {
         }
         style={isMobile ? { zIndex: 50 } : panelStyle}
       >
-        {/* Tab content area */}
-        <div className="overflow-hidden">
+        {/* Tab content area — fixed height prevents layout shift between tabs */}
+        <div className="overflow-hidden" style={{ minHeight: 316 }}>
           <AnimatePresence mode="wait">
             <motion.div
               key={activeTab}
@@ -137,30 +169,50 @@ function DateModal({ sendAt, onSelect, onClose, anchorRef }) {
           </AnimatePresence>
         </div>
 
-        {/* Tab bar at bottom */}
-        <div className="flex border-t border-gray-100">
-          {TABS.map((tab) => {
-            const isActive = activeTab === tab.id;
-            return (
+        {/* Tab bar at bottom — clip-path technique */}
+        <div
+          className="relative border-t border-gray-100"
+          ref={tabBarRef}
+          style={{ padding: '6px 6px' }}
+        >
+          {/* Base layer: default styling */}
+          <div className="flex gap-1">
+            {TABS.map((tab) => (
               <button
                 key={tab.id}
+                ref={(el) => { tabRefs.current[tab.id] = el; }}
                 type="button"
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex-1 py-3 text-xs font-medium border-none outline-none bg-transparent cursor-pointer transition-colors ${
-                  isActive
-                    ? 'text-primary-blue border-t-2 border-primary-blue -mt-px'
-                    : 'text-gray-400 hover:text-gray-600'
-                }`}
-                style={
-                  isActive
-                    ? { borderTopWidth: '2px', borderTopStyle: 'solid', borderTopColor: '#3B82F6', marginTop: '-1px' }
-                    : {}
-                }
+                className="flex-1 py-2.5 text-xs font-medium border-none outline-none bg-transparent cursor-pointer text-gray-400 rounded-[14px] transition-colors hover:text-gray-600"
               >
                 {tab.label}
               </button>
-            );
-          })}
+            ))}
+          </div>
+
+          {/* Overlay layer: active styling, revealed via clip-path */}
+          <div
+            ref={overlayRef}
+            className="absolute flex gap-1 pointer-events-none"
+            style={{
+              top: 6,
+              left: 6,
+              right: 6,
+              bottom: 6,
+              clipPath: 'inset(0 100% 0 0% round 14px)',
+              transition: 'clip-path 0.25s cubic-bezier(0.25, 1, 0.5, 1)',
+            }}
+          >
+            {TABS.map((tab) => (
+              <div
+                key={tab.id}
+                className="flex-1 py-2.5 text-xs font-medium flex items-center justify-center text-white rounded-[14px]"
+                style={{ backgroundColor: '#3B82F6' }}
+              >
+                {tab.label}
+              </div>
+            ))}
+          </div>
         </div>
       </motion.div>
     </>
