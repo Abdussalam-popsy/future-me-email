@@ -248,7 +248,14 @@ var EmailScheduler = class {
     if (url.pathname === "/schedule" && request.method === "POST") {
       const { emailId, sendAt } = await request.json();
       await this.state.storage.put("emailId", emailId);
-      const sendTime = new Date(sendAt).getTime();
+      const parsed = new Date(sendAt);
+      const sendTime = parsed.getTime();
+      if (!sendTime || isNaN(sendTime)) {
+        return new Response(JSON.stringify({ error: "Invalid delivery date." }), {
+          status: 400,
+          headers: { "Content-Type": "application/json" }
+        });
+      }
       await this.state.storage.setAlarm(sendTime);
       return new Response("Alarm set!");
     }
@@ -398,26 +405,30 @@ var worker_default = {
         }
         const sanitizedMessage = sanitizeInput(message);
         const sanitizedSubject = sanitizeInput(subject);
-        if (!cf_turnstile_response) {
-          return new Response(JSON.stringify({ error: "Bot verification failed" }), {
-            status: 403,
-            headers: { ...corsHeaders, "Content-Type": "application/json" }
+        const isLocalDev = origin?.includes("localhost");
+        const skipTurnstile = isLocalDev && cf_turnstile_response === "dev-bypass-token";
+        if (!skipTurnstile) {
+          if (!cf_turnstile_response) {
+            return new Response(JSON.stringify({ error: "Bot verification failed" }), {
+              status: 403,
+              headers: { ...corsHeaders, "Content-Type": "application/json" }
+            });
+          }
+          const turnstileVerification = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              secret: env.TURNSTILE_SECRET_KEY,
+              response: cf_turnstile_response
+            })
           });
-        }
-        const turnstileVerification = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            secret: env.TURNSTILE_SECRET_KEY,
-            response: cf_turnstile_response
-          })
-        });
-        const turnstileResult = await turnstileVerification.json();
-        if (!turnstileResult.success) {
-          return new Response(JSON.stringify({ error: "Bot verification failed" }), {
-            status: 403,
-            headers: { ...corsHeaders, "Content-Type": "application/json" }
-          });
+          const turnstileResult = await turnstileVerification.json();
+          if (!turnstileResult.success) {
+            return new Response(JSON.stringify({ error: "Bot verification failed" }), {
+              status: 403,
+              headers: { ...corsHeaders, "Content-Type": "application/json" }
+            });
+          }
         }
         const parsedSendAt = new Date(sendAt);
         const result = await env.DB.prepare(
@@ -457,9 +468,10 @@ var worker_default = {
           headers: corsHeaders
         });
       } catch (error) {
-        return new Response("Something went wrong. Please try again.", {
+        console.error("Schedule email error:", error.message);
+        return new Response(JSON.stringify({ error: "Something went wrong. Please try again." }), {
           status: 500,
-          headers: corsHeaders
+          headers: { ...corsHeaders, "Content-Type": "application/json" }
         });
       }
     }

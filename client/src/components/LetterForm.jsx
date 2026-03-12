@@ -1,6 +1,6 @@
 import { formatShortDate } from './DateModal/dateUtils';
 
-function LetterForm({ form, onFormChange, sendAt }) {
+function LetterForm({ form, onFormChange }) {
   const handleChange = (e) => {
     onFormChange(e.target.name, e.target.value);
   };
@@ -30,13 +30,18 @@ function LetterForm({ form, onFormChange, sendAt }) {
           required
           maxLength={10000}
           rows="8"
-          className="w-full py-3 text-base leading-relaxed border-none text-[#9198B2] outline-none resize-vertical bg-transparent placeholder:text-[#9198B2] tracking-wide"
+          className="w-full py-3 text-base leading-relaxed border-none text-[#9198B2] outline-none resize-none bg-transparent placeholder:text-[#9198B2] tracking-wide"
         />
-        {form.message.length > 0 && (
-          <p className={`text-xs text-right ${form.message.length >= 9500 ? 'text-red-400' : 'text-gray-400'}`}>
-            {form.message.length.toLocaleString()} / 10,000
-          </p>
-        )}
+        {/* Always reserve space for the counter to prevent layout shift */}
+        <p className={`text-xs text-right h-4 ${
+          form.message.length === 0
+            ? 'invisible'
+            : form.message.length >= 9500
+            ? 'text-red-400'
+            : 'text-gray-400'
+        }`}>
+          {form.message.length > 0 ? `${form.message.length.toLocaleString()} / 10,000` : '\u00A0'}
+        </p>
       </div>
     </>
   );

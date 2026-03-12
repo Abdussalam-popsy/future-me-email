@@ -39,11 +39,11 @@ function ScrollPickerTab({ sendAt, onSelect }) {
 
       {/* Scroll wheels with highlight band */}
       <div className="relative" style={{ height: 200 }}>
-        {/* Highlight band */}
+        {/* Highlight band — sits behind the centered selected item */}
         <div
-          className="absolute left-4 right-4 bg-gray-100 rounded-lg pointer-events-none"
+          className="absolute left-3 right-3 bg-[#EEF6FF] rounded-xl pointer-events-none"
           style={{
-            height: 40,
+            height: 42,
             top: '50%',
             transform: 'translateY(-50%)',
             zIndex: 0,

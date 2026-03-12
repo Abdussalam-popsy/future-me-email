@@ -69,6 +69,12 @@ export function useTurnstile() {
 
   // Execute Turnstile and call back with token
   const execute = useCallback((callback) => {
+    // In development, bypass Turnstile — send a dummy token
+    if (import.meta.env.DEV) {
+      callback('dev-bypass-token');
+      return;
+    }
+
     if (turnstileToken) {
       // Already have a valid token
       callback(turnstileToken);

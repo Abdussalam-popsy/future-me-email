@@ -6,11 +6,12 @@ import LetterForm from './components/LetterForm';
 import SubmitButton from './components/SubmitButton';
 import ConfirmationScreen from './components/ConfirmationScreen';
 import { useTurnstile } from './hooks/useTurnstile';
+import { formatShortDate } from './components/DateModal/dateUtils';
 
 function App() {
   const [form, setForm] = useState({
     to: '',
-    subject: '',
+    subject: `A letter from ${formatShortDate(new Date())}`,
     message: '',
     signature: 'Keep Pushing,\nPast You',
   });
@@ -130,7 +131,7 @@ function App() {
     setButtonState('idle');
     setForm({
       to: '',
-      subject: '',
+      subject: `A letter from ${formatShortDate(new Date())}`,
       message: '',
       signature: 'Keep Pushing,\nPast You',
     });
@@ -168,12 +169,22 @@ function App() {
 
       <div className="h-screen flex flex-col items-center justify-center bg-bg-light px-4 overflow-hidden">
         <div className="w-full max-w-[630px]">
-          <h1 className="text-3xl md:text-[40px] font-semibold text-black text-center mb-2 leading-[1.2] text-balance">
-            Write a letter to your future-self
-          </h1>
-          <p className="text-base text-[#9198B2] text-center mt-3 mb-8 tracking-wide">
-            Write what&apos;s on your mind. We&apos;ll email it to you when the time comes.
-          </p>
+          <AnimatePresence>
+            {!showConfirmation && (
+              <motion.div
+                initial={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                transition={{ duration: 0.3 }}
+              >
+                <h1 className="text-3xl md:text-[40px] font-semibold text-black text-center mb-2 leading-[1.2] text-balance">
+                  Write a letter to your future-self
+                </h1>
+                <p className="text-base text-[#9198B2] text-center mt-3 mb-8 tracking-wide">
+                  Write what&apos;s on your mind. We&apos;ll email it to you when the time comes.
+                </p>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           {showConfirmation ? (
             <ConfirmationScreen deliveryDate={deliveryDate} onWriteAnother={handleWriteAnother} />
@@ -189,7 +200,7 @@ function App() {
                   />
 
                   {/* To Field */}
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 min-w-0 flex-1">
                     <span className="text-base text-[#9198B2] flex-shrink-0 tracking-wide">To:</span>
                     <input
                       type="email"
@@ -198,7 +209,7 @@ function App() {
                       value={form.to}
                       onChange={handleChange}
                       required
-                      className="flex-1 py-1 text-base border-none text-primary outline-none bg-transparent placeholder:text-[#9198B2] tracking-wide"
+                      className="min-w-0 w-full py-1 text-base border-none text-primary outline-none bg-transparent placeholder:text-[#9198B2] tracking-wide truncate focus:overflow-visible"
                     />
                   </div>
                 </div>
@@ -206,7 +217,6 @@ function App() {
                 <LetterForm
                   form={form}
                   onFormChange={(name, value) => { setErrorMessage(''); setForm({ ...form, [name]: value }); }}
-                  sendAt={sendAt}
                 />
 
                 {/* Signature and button wrapper */}

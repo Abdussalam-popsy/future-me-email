@@ -129,17 +129,20 @@ function CalendarTab({ sendAt, onSelect }) {
               const isDisabled = isPast || isTodayDate;
               const isSelected = isSameDay(date, sendAt);
 
-              let cellClasses = 'h-9 w-9 flex items-center justify-center text-sm border-none outline-none bg-transparent mx-auto ';
+              const baseCell = 'h-9 w-9 flex items-center justify-center text-sm border-none outline-none mx-auto';
 
+              let stateClasses;
               if (isSelected && !isDisabled) {
-                cellClasses += 'bg-primary-blue text-white rounded-full font-semibold cursor-pointer';
+                stateClasses = 'bg-[#2188FF] text-white rounded-full font-semibold cursor-pointer';
               } else if (isTodayDate) {
-                cellClasses += 'font-bold text-gray-400 cursor-not-allowed';
+                stateClasses = 'bg-transparent font-bold text-gray-400 cursor-not-allowed';
               } else if (isPast) {
-                cellClasses += 'text-gray-300 cursor-not-allowed';
+                stateClasses = 'bg-transparent text-gray-300 cursor-not-allowed';
               } else {
-                cellClasses += 'text-gray-700 cursor-pointer hover:bg-blue-50 rounded-full';
+                stateClasses = 'bg-transparent text-gray-700 cursor-pointer hover:bg-blue-50 rounded-full';
               }
+
+              const cellClasses = `${baseCell} ${stateClasses}`;
 
               return (
                 <button
