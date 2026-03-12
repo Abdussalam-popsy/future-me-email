@@ -65,6 +65,8 @@ export function useTurnstile() {
     };
   }, []);
 
+  const timeoutRef = useRef(null);
+
   // Execute Turnstile and call back with token
   const execute = useCallback((callback) => {
     if (turnstileToken) {
@@ -74,7 +76,28 @@ export function useTurnstile() {
     }
 
     setIsVerifying(true);
-    pendingCallback.current = callback;
+
+    // Wrap the callback so we can clear the timeout when the token arrives
+    const wrappedCallback = (token) => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+        timeoutRef.current = null;
+      }
+      callback(token);
+    };
+
+    pendingCallback.current = wrappedCallback;
+
+    // 10-second timeout: if token hasn't arrived, call back with null
+    timeoutRef.current = setTimeout(() => {
+      timeoutRef.current = null;
+      if (pendingCallback.current) {
+        const cb = pendingCallback.current;
+        pendingCallback.current = null;
+        setIsVerifying(false);
+        cb(null);
+      }
+    }, 10000);
 
     if (widgetId.current !== null) {
       window.turnstile.execute(widgetId.current);
@@ -86,6 +109,10 @@ export function useTurnstile() {
     setTurnstileToken(null);
     setIsVerifying(false);
     pendingCallback.current = null;
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
+    }
     if (widgetId.current !== null && window.turnstile) {
       window.turnstile.reset(widgetId.current);
     }

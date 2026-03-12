@@ -29,12 +29,12 @@ function SubmitButton({ buttonState, disabled }) {
         buttonState === 'error'
           ? 'bg-red-500 cursor-not-allowed'
           : buttonState === 'verifying'
-          ? 'bg-blue-400 cursor-not-allowed'
+          ? 'bg-[#2188FF]/80 cursor-not-allowed'
           : buttonState === 'sending'
-          ? 'bg-blue-400 cursor-not-allowed'
+          ? 'bg-[#2188FF]/80 cursor-not-allowed'
           : buttonState === 'success'
           ? 'bg-green-500 cursor-not-allowed'
-          : 'bg-primary-blue hover:bg-blue-600 cursor-pointer'
+          : 'bg-[#2188FF] hover:bg-[#1a6fd4] cursor-pointer'
       }`}
     >
       <AnimatePresence mode="popLayout" initial={false}>

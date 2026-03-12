@@ -150,10 +150,14 @@ function DateModal({ sendAt, onSelect, onClose, anchorRef }) {
   return (
     <>
       {/* Backdrop */}
-      <div
-        className="fixed inset-0"
+      <motion.div
+        className="fixed inset-0 bg-black/20"
         style={{ zIndex: 40 }}
         onClick={onClose}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: 0.2 }}
       />
 
       {/* Modal panel */}

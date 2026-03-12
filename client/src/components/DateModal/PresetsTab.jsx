@@ -20,7 +20,11 @@ function PresetsTab({ onSelect }) {
 
   const handleSaveBirthday = () => {
     const data = { month: editMonth, day: editDay };
-    localStorage.setItem('futureme_birthday', JSON.stringify(data));
+    try {
+      localStorage.setItem('futureme_birthday', JSON.stringify(data));
+    } catch {
+      // Silent fail — Safari private browsing may block localStorage writes
+    }
     setBirthdayData(data);
     setIsEditingBirthday(false);
   };

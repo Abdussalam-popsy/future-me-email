@@ -126,16 +126,17 @@ function CalendarTab({ sendAt, onSelect }) {
               const date = new Date(viewYear, viewMonth, day);
               const isPast = isBeforeToday(date);
               const isTodayDate = isToday(date);
+              const isDisabled = isPast || isTodayDate;
               const isSelected = isSameDay(date, sendAt);
 
               let cellClasses = 'h-9 w-9 flex items-center justify-center text-sm border-none outline-none bg-transparent mx-auto ';
 
-              if (isSelected) {
+              if (isSelected && !isDisabled) {
                 cellClasses += 'bg-primary-blue text-white rounded-full font-semibold cursor-pointer';
+              } else if (isTodayDate) {
+                cellClasses += 'font-bold text-gray-400 cursor-not-allowed';
               } else if (isPast) {
                 cellClasses += 'text-gray-300 cursor-not-allowed';
-              } else if (isTodayDate) {
-                cellClasses += 'font-bold text-primary cursor-pointer hover:bg-blue-50 rounded-full';
               } else {
                 cellClasses += 'text-gray-700 cursor-pointer hover:bg-blue-50 rounded-full';
               }
@@ -144,9 +145,9 @@ function CalendarTab({ sendAt, onSelect }) {
                 <button
                   type="button"
                   key={day}
-                  disabled={isPast}
+                  disabled={isDisabled}
                   onClick={() => {
-                    if (!isPast) {
+                    if (!isDisabled) {
                       onSelect(new Date(viewYear, viewMonth, day));
                     }
                   }}

@@ -8,6 +8,93 @@
 
 import { generateEmailHTML } from './emailTemplate.js';
 
+// Generates a confirmation email HTML matching the existing template aesthetic
+function generateConfirmationHTML(formattedDate) {
+  const bg        = '#f5f0eb';
+  const card      = '#ffffff';
+  const divider   = '#e8e0d8';
+  const textDark  = '#2c2420';
+  const textMid   = '#6b5e54';
+  const textLight = '#8b7e74';
+  const textMuted = '#a89e94';
+  const linkColor = '#8b7355';
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Your letter is saved</title>
+  <style>
+    @media only screen and (max-width: 600px) {
+      .email-container { width: 100% !important; max-width: 100% !important; }
+      .email-body-cell { padding: 24px 20px !important; }
+      .header-cell { padding: 28px 20px 0 20px !important; }
+      .footer-cell { padding: 0 20px 28px 20px !important; }
+    }
+  </style>
+</head>
+<body style="margin: 0; padding: 0; background-color: ${bg}; -webkit-text-size-adjust: 100%;">
+  <div style="display: none; max-height: 0; overflow: hidden;" aria-hidden="true">
+    Your letter is on its way to the future.
+  </div>
+  <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="background-color: ${bg};">
+    <tr>
+      <td style="padding: 40px 20px; text-align: center;">
+        <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="600" align="center" class="email-container" style="max-width: 600px; width: 100%; background-color: ${card}; border-radius: 8px;">
+          <tr>
+            <td class="header-cell" style="padding: 36px 40px 0 40px; text-align: center;">
+              <p style="margin: 0 0 8px 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif; font-size: 13px; color: ${textLight}; letter-spacing: 0.5px; text-transform: uppercase;">
+                Confirmation
+              </p>
+              <p style="margin: 0; font-family: Georgia, 'Times New Roman', Times, serif; font-size: 22px; color: ${textDark}; line-height: 1.4;">
+                Your letter is on its way to the future
+              </p>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding: 24px 40px 0 40px;">
+              <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+                <tr><td style="border-top: 1px solid ${divider}; font-size: 0; line-height: 0;">&nbsp;</td></tr>
+              </table>
+            </td>
+          </tr>
+          <tr>
+            <td class="email-body-cell" style="padding: 24px 40px 24px 40px; text-align: center;">
+              <p style="margin: 0 0 16px 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif; font-size: 15px; color: ${textMid}; line-height: 1.6;">
+                Arriving
+              </p>
+              <p style="margin: 0 0 20px 0; font-family: Georgia, 'Times New Roman', Times, serif; font-size: 20px; color: ${textDark}; font-weight: bold;">
+                ${formattedDate}
+              </p>
+              <p style="margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif; font-size: 15px; color: ${textMid}; line-height: 1.6;">
+                We have your letter safe. You'll hear from us on ${formattedDate}.
+              </p>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding: 0 40px;">
+              <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+                <tr><td style="border-top: 1px solid ${divider}; font-size: 0; line-height: 0;">&nbsp;</td></tr>
+              </table>
+            </td>
+          </tr>
+          <tr>
+            <td class="footer-cell" style="padding: 24px 40px 36px 40px; text-align: center;">
+              <p style="margin: 0 0 6px 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif; font-size: 13px; color: ${textMuted};">
+                Sent with Future Me &middot;
+                <a href="https://futureme.dev" target="_blank" style="color: ${linkColor}; text-decoration: none;">futureme.dev</a>
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+}
+
 // Durable Object for scheduling emails with alarms
 export class EmailScheduler {
   constructor(state, env) {
@@ -78,7 +165,7 @@ export class EmailScheduler {
       });
 
       if (response.ok) {
-        console.log(`Sent email to ${email.recipient}`);
+        console.log('Email sent successfully');
         await this.env.DB.prepare(
           'UPDATE scheduled_emails SET status = ? WHERE id = ?'
         ).bind('sent', emailId).run();
@@ -162,9 +249,11 @@ export default {
   async fetch(request, env) {
     const url = new URL(request.url);
 
-    // CORS headers
+    // CORS headers — dynamic origin
+    const origin = request.headers.get('Origin');
+    const allowedOrigin = origin?.includes('localhost') ? origin : 'https://futureme.dev';
     const corsHeaders = {
-      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Origin': allowedOrigin,
       'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
       'Access-Control-Allow-Headers': 'Content-Type',
     };
@@ -273,6 +362,32 @@ export default {
           method: 'POST',
           body: JSON.stringify({ emailId, sendAt: parsedSendAt.toISOString() }),
         });
+
+        // Send confirmation email (fire-and-forget — never block the response)
+        const formattedDeliveryDate = parsedSendAt.toLocaleDateString('en-US', {
+          weekday: 'long',
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric',
+        });
+
+        try {
+          await fetch('https://api.resend.com/emails', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${env.RESEND_API_KEY}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              from: 'Future Me <noreply@futureme.dev>',
+              to,
+              subject: `Your letter is saved — arriving ${formattedDeliveryDate}`,
+              html: generateConfirmationHTML(formattedDeliveryDate),
+            }),
+          });
+        } catch (confirmErr) {
+          console.error('Failed to send confirmation email:', confirmErr.message);
+        }
 
         return new Response('Email scheduled successfully!', {
           headers: corsHeaders

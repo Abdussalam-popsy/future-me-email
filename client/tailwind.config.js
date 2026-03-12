@@ -9,11 +9,12 @@ export default {
       fontFamily: {
         'inter-tight': ['"Inter Tight"', 'sans-serif'],
         'fasthand': ['"Fasthand"', 'cursive'],
+        'sacramento': ['"Sacramento"', 'cursive'],
       },
       colors: {
         'primary': '#0B1431',
-        'primary-blue': '#3B82F6',
-        'bg-light': '#EDF3FF',
+        'primary-blue': '#2188FF',
+        'bg-light': '#EEF6FF',
       },
     },
   },

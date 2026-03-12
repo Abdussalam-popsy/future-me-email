@@ -1,5 +1,7 @@
 node_modules/
 .env
+client/.env
 scheduledEmails.json
 .DS_Store
+.wrangler/
 everything-claude-code/
