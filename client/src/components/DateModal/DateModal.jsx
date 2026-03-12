@@ -12,11 +12,20 @@ const TABS = [
 
 function DateModal({ sendAt, onSelect, onClose, anchorRef }) {
   const [activeTab, setActiveTab] = useState('calendar');
+  const [slideDirection, setSlideDirection] = useState(0);
   const [position, setPosition] = useState({ top: 0, left: 0, placement: 'below' });
   const [isMobile, setIsMobile] = useState(false);
   const tabBarRef = useRef(null);
   const overlayRef = useRef(null);
   const tabRefs = useRef({});
+
+  const TAB_INDEX = { calendar: 0, presets: 1, custom: 2 };
+
+  const handleTabChange = (tabId) => {
+    const dir = TAB_INDEX[tabId] > TAB_INDEX[activeTab] ? 1 : -1;
+    setSlideDirection(dir);
+    setActiveTab(tabId);
+  };
 
   // Calculate position from anchor
   const updatePosition = useCallback(() => {
@@ -109,17 +118,28 @@ function DateModal({ sendAt, onSelect, onClose, anchorRef }) {
     ? { duration: 0 }
     : { duration: 0.12, ease: 'easeOut' };
 
-  const tabContentAnimation = prefersReducedMotion
-    ? {}
+  const SLIDE_DISTANCE = 40;
+
+  const tabContentVariants = prefersReducedMotion
+    ? { enter: {}, center: {}, exit: {} }
     : {
-        initial: { opacity: 0, y: 6 },
-        animate: { opacity: 1, y: 0 },
-        exit: { opacity: 0, y: 6 },
+        enter: (dir) => ({
+          x: dir * SLIDE_DISTANCE,
+          opacity: 0,
+        }),
+        center: {
+          x: 0,
+          opacity: 1,
+        },
+        exit: (dir) => ({
+          x: dir * -SLIDE_DISTANCE,
+          opacity: 0,
+        }),
       };
 
   const tabContentTransition = prefersReducedMotion
     ? { duration: 0 }
-    : { duration: 0.15, ease: 'easeOut' };
+    : { duration: 0.2, ease: [0.25, 1, 0.5, 1] };
 
   const panelStyle = isMobile
     ? {}
@@ -150,10 +170,14 @@ function DateModal({ sendAt, onSelect, onClose, anchorRef }) {
       >
         {/* Tab content area — fixed height prevents layout shift between tabs */}
         <div className="overflow-hidden" style={{ minHeight: 316 }}>
-          <AnimatePresence mode="wait">
+          <AnimatePresence mode="wait" initial={false} custom={slideDirection}>
             <motion.div
               key={activeTab}
-              {...tabContentAnimation}
+              custom={slideDirection}
+              variants={tabContentVariants}
+              initial="enter"
+              animate="center"
+              exit="exit"
               transition={tabContentTransition}
             >
               {activeTab === 'calendar' && (
@@ -182,7 +206,7 @@ function DateModal({ sendAt, onSelect, onClose, anchorRef }) {
                 key={tab.id}
                 ref={(el) => { tabRefs.current[tab.id] = el; }}
                 type="button"
-                onClick={() => setActiveTab(tab.id)}
+                onClick={() => handleTabChange(tab.id)}
                 className="flex-1 py-2.5 text-xs font-medium border-none outline-none bg-transparent cursor-pointer text-gray-400 rounded-[14px] transition-colors hover:text-gray-600"
               >
                 {tab.label}
