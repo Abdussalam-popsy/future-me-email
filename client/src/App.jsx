@@ -5,6 +5,7 @@ import DateModal from './components/DateModal/DateModal';
 import LetterForm from './components/LetterForm';
 import SubmitButton from './components/SubmitButton';
 import ConfirmationScreen from './components/ConfirmationScreen';
+import TurnstileModal from './components/TurnstileModal';
 import { useTurnstile } from './hooks/useTurnstile';
 import { formatShortDate } from './components/DateModal/dateUtils';
 
@@ -47,7 +48,7 @@ function App() {
 
   const [errorMessage, setErrorMessage] = useState('');
 
-  const { execute, reset } = useTurnstile();
+  const { execute, reset, showTurnstileModal, handleTurnstileSuccess, handleTurnstileClose } = useTurnstile();
 
   const handleChange = (e) => {
     setErrorMessage('');
@@ -244,6 +245,16 @@ function App() {
               </div>
             </form>
           )}
+
+          {/* Turnstile Verification Modal */}
+          <TurnstileModal
+            open={showTurnstileModal}
+            onSuccess={handleTurnstileSuccess}
+            onClose={() => {
+              handleTurnstileClose();
+              setButtonState('idle');
+            }}
+          />
 
           {/* Date Modal */}
           <AnimatePresence>
