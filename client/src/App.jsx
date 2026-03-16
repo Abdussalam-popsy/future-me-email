@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import DatePill from './components/DateModal/DatePill';
 import DateModal from './components/DateModal/DateModal';
@@ -47,6 +47,19 @@ function App() {
   };
 
   const [errorMessage, setErrorMessage] = useState('');
+
+  // Dev preview: Ctrl+Shift+P to trigger animation without API call
+  useEffect(() => {
+    if (!import.meta.env.DEV) return;
+    const handler = (e) => {
+      if (e.ctrlKey && e.shiftKey && e.key === 'P') {
+        setDeliveryDate(new Date('2027-03-15'));
+        setShowConfirmation(true);
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, []);
 
   const { execute, reset, showTurnstileModal, handleTurnstileSuccess, handleTurnstileClose } = useTurnstile();
 
