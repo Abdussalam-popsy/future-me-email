@@ -6,7 +6,7 @@ const DatePill = forwardRef(({ sendAt, onClick }, ref) => (
     ref={ref}
     type="button"
     onClick={onClick}
-    className="px-3 py-1.5 bg-[#D4E8FF] text-[#2188FF] rounded-full text-sm font-medium cursor-pointer border-none outline-none hover:bg-[#c4dcf9] transition-colors flex items-center gap-2 tracking-wide"
+    className="px-3 py-1.5 bg-[#D4E8FF] text-[#2090FF] rounded-full text-sm font-medium cursor-pointer border-none outline-none hover:bg-[#c4dcf9] transition-colors flex items-center gap-2 tracking-wide"
   >
     <svg width="14" height="14" viewBox="0 0 16 16" fill="none" className="opacity-70">
       <rect x="2" y="3" width="12" height="11" rx="2" stroke="currentColor" strokeWidth="1.5" />

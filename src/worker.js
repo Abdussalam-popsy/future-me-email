@@ -277,6 +277,21 @@ export default {
       return new Response('Hello World 👋', { headers: corsHeaders });
     }
 
+    // Stats route
+    if (url.pathname === '/stats' && request.method === 'GET') {
+      try {
+        const row = await env.DB.prepare('SELECT COUNT(*) as total FROM scheduled_emails').first();
+        return new Response(JSON.stringify({ total: row?.total ?? 0 }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      } catch (error) {
+        console.error('Stats error:', error.message);
+        return new Response(JSON.stringify({ total: 0 }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+    }
+
     // Schedule email route
     if (url.pathname === '/schedule-email' && request.method === 'POST') {
       try {

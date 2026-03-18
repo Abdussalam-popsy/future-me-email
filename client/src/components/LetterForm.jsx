@@ -16,7 +16,7 @@ function LetterForm({ form, onFormChange }) {
           value={form.subject}
           onChange={handleChange}
           required
-          className="w-full py-2 text-2xl md:text-[28px] font-semibold border-none text-black outline-none bg-transparent placeholder:text-gray-300"
+          className="w-full py-2 text-2xl md:text-[28px] font-semibold border-none text-primary outline-none bg-transparent placeholder:text-gray-300"
         />
       </div>
 

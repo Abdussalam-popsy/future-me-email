@@ -235,7 +235,7 @@ function DateModal({ sendAt, onSelect, onClose, anchorRef }) {
               <div
                 key={tab.id}
                 className="flex-1 py-2.5 text-xs font-medium flex items-center justify-center text-white rounded-[14px]"
-                style={{ backgroundColor: '#3B82F6' }}
+                style={{ backgroundColor: '#2090FF' }}
               >
                 {tab.label}
               </div>

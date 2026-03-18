@@ -133,7 +133,7 @@ function CalendarTab({ sendAt, onSelect }) {
 
               let stateClasses;
               if (isSelected && !isDisabled) {
-                stateClasses = 'bg-[#2188FF] text-white rounded-full font-semibold cursor-pointer';
+                stateClasses = 'bg-[#2090FF] text-white rounded-full font-semibold cursor-pointer';
               } else if (isTodayDate) {
                 stateClasses = 'bg-transparent font-bold text-gray-400 cursor-not-allowed';
               } else if (isPast) {

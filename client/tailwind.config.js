@@ -8,12 +8,11 @@ export default {
     extend: {
       fontFamily: {
         'inter-tight': ['"Inter Tight"', 'sans-serif'],
-        'fasthand': ['"Fasthand"', 'cursive'],
         'sacramento': ['"Sacramento"', 'cursive'],
       },
       colors: {
         'primary': '#0B1431',
-        'primary-blue': '#2188FF',
+        'primary-blue': '#2090FF',
         'bg-light': '#EEF6FF',
       },
     },

@@ -178,7 +178,7 @@ function App() {
                 exit={{ opacity: 0, y: -20 }}
                 transition={{ duration: 0.3 }}
               >
-                <h1 className="text-3xl md:text-[40px] font-semibold text-black text-center mb-2 leading-[1.2] text-balance">
+                <h1 className="text-3xl md:text-[40px] font-semibold text-primary text-center mb-2 leading-[1.2] text-balance">
                   Write a letter to your future-self
                 </h1>
                 <p className="text-base text-[#9198B2] text-center mt-3 mb-8 tracking-wide">

@@ -106,7 +106,7 @@ function TurnstileModal({ open, onSuccess, onClose }) {
             </span>
 
             {/* Heading */}
-            <h2 className="text-xl font-semibold text-black mb-1 tracking-wide">
+            <h2 className="text-xl font-semibold text-primary mb-1 tracking-wide">
               One last thing
             </h2>
 

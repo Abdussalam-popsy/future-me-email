@@ -65,7 +65,7 @@ function ConfirmationScreen({ deliveryDate, onWriteAnother }) {
 
           {/* Blue seal */}
           <motion.div
-            className="absolute left-1/2 -translate-x-1/2 bottom-3 w-7 h-7 bg-[#2188FF] rounded-full flex items-center justify-center"
+            className="absolute left-1/2 -translate-x-1/2 bottom-3 w-7 h-7 bg-[#2090FF] rounded-full flex items-center justify-center"
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
             transition={{ delay: 1.5, duration: 0.3, type: 'spring', stiffness: 400, damping: 15 }}
@@ -96,7 +96,7 @@ function ConfirmationScreen({ deliveryDate, onWriteAnother }) {
           animate={{ opacity: 1 }}
           transition={{ delay: 2.0, duration: 0.4 }}
         >
-          <p className="text-[#2188FF] text-xs font-semibold tracking-[0.2em] uppercase mt-6 mb-6">
+          <p className="text-[#2090FF] text-xs font-semibold tracking-[0.2em] uppercase mt-6 mb-6">
             Your letter is sealed
           </p>
         </motion.div>
@@ -108,7 +108,7 @@ function ConfirmationScreen({ deliveryDate, onWriteAnother }) {
           transition={{ delay: 2.2, duration: 0.4 }}
         >
           <p className="text-[#9198B2] text-sm mb-1">Arriving</p>
-          <p className="text-black text-lg md:text-xl font-semibold">{formattedDate}</p>
+          <p className="text-primary text-lg md:text-xl font-semibold">{formattedDate}</p>
         </motion.div>
       </div>
 
@@ -135,14 +135,14 @@ function ConfirmationScreen({ deliveryDate, onWriteAnother }) {
             href={twitterUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-sm text-[#2188FF] hover:text-[#1a6fd4] transition-colors font-medium"
+            className="text-sm text-[#2090FF] hover:text-[#1878e0] transition-colors font-medium"
           >
             Share on X
           </a>
           <span className="hidden sm:inline text-gray-200">|</span>
           <button
             onClick={onWriteAnother}
-            className="text-sm text-[#9198B2] hover:text-black transition-colors font-medium bg-transparent border-none cursor-pointer"
+            className="text-sm text-[#9198B2] hover:text-primary transition-colors font-medium bg-transparent border-none cursor-pointer"
           >
             Write another letter
           </button>
