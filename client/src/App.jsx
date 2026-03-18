@@ -1,4 +1,5 @@
 import { useState, useRef } from 'react';
+import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import DatePill from './components/DateModal/DatePill';
 import DateModal from './components/DateModal/DateModal';
@@ -284,6 +285,14 @@ function App() {
               >
                 Abdussalam
               </a>
+            </p>
+            <p className="mb-1">
+              <Link
+                to="/stats"
+                className="text-[#9198B2]/70 no-underline hover:text-[#9198B2] transition-colors"
+              >
+                See how many letters are traveling to the future &rarr;
+              </Link>
             </p>
             <a
               href="https://buymeacoffee.com/abdussalampopsy"
