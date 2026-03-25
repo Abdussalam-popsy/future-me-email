@@ -1,6 +1,8 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
+
+const API_URL = import.meta.env.VITE_API_URL || 'https://futureme-worker.ayomidep745.workers.dev';
 import DatePill from './components/DateModal/DatePill';
 import DateModal from './components/DateModal/DateModal';
 import LetterForm from './components/LetterForm';
@@ -48,6 +50,15 @@ function App() {
   };
 
   const [errorMessage, setErrorMessage] = useState('');
+  const [letterCount, setLetterCount] = useState(null);
+  const [showChangelog, setShowChangelog] = useState(false);
+
+  useEffect(() => {
+    fetch(`${API_URL}/stats`)
+      .then((res) => res.json())
+      .then((data) => setLetterCount(data.total ?? 0))
+      .catch(() => setLetterCount(0));
+  }, []);
 
   const { execute, reset, showTurnstileModal, handleTurnstileSuccess, handleTurnstileClose } = useTurnstile();
 
@@ -147,7 +158,7 @@ function App() {
   };
 
   return (
-    <>
+    <div className="h-screen flex flex-col bg-bg-light overflow-hidden">
       <AnimatePresence>
         {!bannerDismissed && (
           <motion.div
@@ -155,7 +166,7 @@ function App() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.3 }}
-            className="bg-primary-blue text-white text-base font-medium py-2 text-center w-full relative tracking-wide"
+            className="bg-primary-blue text-white text-sm md:text-base font-medium py-2 text-center w-full relative tracking-wide flex-shrink-0 px-10"
           >
             You&apos;re early &mdash; Future Me just launched. Have feedback? &rarr;{' '}
             <a href="mailto:feedback@futureme.dev?subject=Hi%2C%20I%20have%20feedback%20for%20FutureMe" className="text-white/70 no-underline hover:text-white transition-colors">feedback@futureme.dev</a>
@@ -170,7 +181,7 @@ function App() {
         )}
       </AnimatePresence>
 
-      <div className="h-screen flex flex-col items-center justify-center bg-bg-light px-4 overflow-hidden">
+      <div className="flex-1 flex flex-col items-center justify-center px-4 py-6 md:py-10">
         <div className="w-full max-w-[630px]">
           <AnimatePresence>
             {!showConfirmation && (
@@ -273,39 +284,125 @@ function App() {
             )}
           </AnimatePresence>
 
-          {/* Footer */}
-          <div className="mt-8 text-center text-base text-[#9198B2] tracking-wide">
-            <p className="mb-1">
-              Made with &#128153; by{' '}
-              <a
-                href="https://twitter.com/abdussalampopsy"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-[#9198B2]/70 no-underline hover:text-[#9198B2] transition-colors"
-              >
-                Abdussalam
-              </a>
-            </p>
-            <p className="mb-1">
-              <Link
-                to="/stats"
-                className="text-[#9198B2]/70 no-underline hover:text-[#9198B2] transition-colors"
-              >
-                See how many letters are traveling to the future &rarr;
-              </Link>
-            </p>
-            <a
-              href="https://buymeacoffee.com/abdussalampopsy"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-[#9198B2]/70 no-underline hover:text-[#9198B2] transition-colors"
-            >
-              Support this project &#9749;
-            </a>
-          </div>
         </div>
       </div>
-    </>
+
+      {/* Floating circular button */}
+      <div className="fixed bottom-5 right-5 z-40">
+        <AnimatePresence>
+          {showChangelog && (
+            <>
+              {/* Backdrop */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                className="fixed inset-0 bg-black/10 backdrop-blur-[2px]"
+                onClick={() => setShowChangelog(false)}
+              />
+
+              {/* Panel */}
+              <motion.div
+                initial={{ opacity: 0, y: 16, scale: 0.9 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 16, scale: 0.9 }}
+                transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
+                className="absolute bottom-14 right-0 w-72 bg-white/95 backdrop-blur-md rounded-2xl shadow-xl border border-[#E5EAF2] p-5 text-xs"
+              >
+                {/* Letter count */}
+                <Link
+                  to="/stats"
+                  onClick={() => setShowChangelog(false)}
+                  className="flex items-center gap-3 no-underline mb-4 pb-4 border-b border-[#E5EAF2]"
+                >
+                  <span className="text-2xl font-semibold text-primary-blue tabular-nums">
+                    {letterCount !== null ? letterCount : '–'}
+                  </span>
+                  <span className="text-[#9198B2] text-sm">letters sent to the future</span>
+                </Link>
+
+                {/* What's new */}
+                <p className="font-semibold text-primary mb-2 text-sm">What&apos;s new</p>
+                <div className="space-y-2 mb-4">
+                  <div className="flex items-start gap-2">
+                    <span className="mt-0.5 w-1.5 h-1.5 rounded-full bg-green-400 flex-shrink-0" />
+                    <span className="text-[#9198B2]">Write &amp; schedule letters to your future self</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="mt-0.5 w-1.5 h-1.5 rounded-full bg-green-400 flex-shrink-0" />
+                    <span className="text-[#9198B2]">Pick any delivery date</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="mt-0.5 w-1.5 h-1.5 rounded-full bg-green-400 flex-shrink-0" />
+                    <span className="text-[#9198B2]">Live letter counter</span>
+                  </div>
+                </div>
+
+                {/* Coming soon */}
+                <p className="font-semibold text-primary mb-2 text-sm">Coming soon</p>
+                <div className="space-y-2 mb-4">
+                  <div className="flex items-start gap-2">
+                    <span className="mt-0.5 w-1.5 h-1.5 rounded-full bg-[#9198B2]/30 flex-shrink-0" />
+                    <span className="text-[#9198B2]">Authentication &amp; saved letters</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="mt-0.5 w-1.5 h-1.5 rounded-full bg-[#9198B2]/30 flex-shrink-0" />
+                    <span className="text-[#9198B2]">Rich emails &mdash; images &amp; video</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="mt-0.5 w-1.5 h-1.5 rounded-full bg-[#9198B2]/30 flex-shrink-0" />
+                    <span className="text-[#9198B2]">More delivery options</span>
+                  </div>
+                </div>
+
+                {/* Credit */}
+                <div className="pt-3 border-t border-[#E5EAF2] text-[#9198B2]/50 text-[11px] tracking-wide">
+                  Made with &#128153; by{' '}
+                  <a href="https://twitter.com/abdussalampopsy" target="_blank" rel="noopener noreferrer" className="text-[#9198B2]/50 no-underline hover:text-[#9198B2] transition-colors">Abdussalam</a>
+                  {' · '}
+                  <a href="https://buymeacoffee.com/abdussalampopsy" target="_blank" rel="noopener noreferrer" className="text-[#9198B2]/50 no-underline hover:text-[#9198B2] transition-colors">Support so it stays free</a>
+                </div>
+              </motion.div>
+            </>
+          )}
+        </AnimatePresence>
+
+        {/* The circle button */}
+        <motion.button
+          onClick={() => setShowChangelog((v) => !v)}
+          className="relative w-11 h-11 rounded-full bg-white shadow-lg border border-[#E5EAF2] flex items-center justify-center cursor-pointer hover:shadow-xl transition-shadow"
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+        >
+          <AnimatePresence mode="wait">
+            {showChangelog ? (
+              <motion.span
+                key="close"
+                initial={{ rotate: -90, opacity: 0 }}
+                animate={{ rotate: 0, opacity: 1 }}
+                exit={{ rotate: 90, opacity: 0 }}
+                transition={{ duration: 0.15 }}
+                className="text-[#9198B2] text-lg leading-none"
+              >
+                &times;
+              </motion.span>
+            ) : (
+              <motion.span
+                key="count"
+                initial={{ scale: 0.5, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.5, opacity: 0 }}
+                transition={{ duration: 0.15 }}
+                className="text-primary-blue font-semibold text-sm tabular-nums leading-none"
+              >
+                {letterCount !== null ? letterCount : '·'}
+              </motion.span>
+            )}
+          </AnimatePresence>
+        </motion.button>
+      </div>
+    </div>
   );
 }
 
